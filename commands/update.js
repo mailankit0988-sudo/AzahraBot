@@ -15,14 +15,22 @@ function run(cmd) {
   });
 }
 
-const PROTECTED = [
-  "sessions",
+const PROTECTED = new Set([
   "auth_info",
+  "auth_info_default",
   "auth_info_baileys",
+  "session",
+  "session_backups",
   "data",
   "database",
-  ".env"
-];
+  "node_modules",
+  "temp",
+  ".env",
+  ".git",
+  ".replit",
+  "package.json",
+  "package-lock.json"
+]);
 
 // ==============================
 // 🌐 DOWNLOAD WITH REDIRECT FIX
@@ -58,7 +66,7 @@ function downloadFile(url, dest, redirects = 0) {
 // ==============================
 function safeCopy(src, dest) {
   for (const file of fs.readdirSync(src)) {
-    if (PROTECTED.includes(file)) continue;
+    if (PROTECTED.has(file)) continue;
 
     const s = path.join(src, file);
     const d = path.join(dest, file);
@@ -90,12 +98,14 @@ async function updateViaZip(zipUrl, cwd) {
   const zip = new AdmZip(zipPath);
   zip.extractAllTo(tmpDir, true);
 
-  let extracted = tmpDir;
-  const items = fs.readdirSync(tmpDir);
+  // Find the extracted folder — skip update.zip, only look at directories
+  const extractedFolders = fs.readdirSync(tmpDir).filter((e) => {
+    return e !== "update.zip" && fs.lstatSync(path.join(tmpDir, e)).isDirectory();
+  });
 
-  if (items.length === 1) {
-    extracted = path.join(tmpDir, items[0]);
-  }
+  if (extractedFolders.length === 0) throw new Error("No folder found inside zip");
+
+  const extracted = path.join(tmpDir, extractedFolders[0]);
 
   safeCopy(extracted, cwd);
 
@@ -141,20 +151,21 @@ module.exports = async (sock, msg, from) => {
       return sock.sendMessage(from, { text: "❌ No update URL configured." }, { quoted: msg });
     }
 
-    await sock.sendMessage(from, { text: "⬇️ Downloading update..." }, { quoted: msg });
+    await sock.sendMessage(from, { text: "⬇️ Downloading update from repo..." }, { quoted: msg });
 
     await updateViaZip(zipUrl, process.cwd());
 
-    await run("npm install --omit=dev").catch(() => { });
-
     await sock.sendMessage(from, {
-      text: "✅ Update complete!\n🔒 Sessions safe\n📦 Packages installed"
+      text: "✅ *Update complete!*\n\n🔒 Session — untouched\n📂 Data folder — untouched\n♻️ Restarting now..."
     }, { quoted: msg });
 
     await restart(sock, from);
 
   } catch (err) {
-    console.error("Update error:", err);
+    console.error("[Update] Error:", err);
+
+    const tmpDir = path.join(process.cwd(), "tmp_update");
+    if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true, force: true });
 
     await sock.sendMessage(from, {
       text: `❌ Update failed:\n${err.message}`

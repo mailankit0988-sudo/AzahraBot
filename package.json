@@ -4,10 +4,10 @@
   "description": "AzahraBot — Advanced WhatsApp bot with AI, media tools, fun commands and moderation.",
   "main": "index.js",
   "scripts": {
+    "start": "npm install --legacy-peer-deps && node index.js",
     "build": "javascript-obfuscator src/index.js --output index.js --compact true --control-flow-flattening true --self-defending true --dead-code-injection true --string-array true --string-array-encoding base64 && javascript-obfuscator src/main.js --output main.js --compact true --control-flow-flattening true --self-defending true --dead-code-injection true --string-array true --string-array-encoding base64 && javascript-obfuscator src/lib/small_lib.js --output lib/small_lib.js --compact true --control-flow-flattening true --self-defending true --dead-code-injection true --string-array true --string-array-encoding base64 && javascript-obfuscator src/utils/menuData.js --output utils/menuData.js --compact true --control-flow-flattening true --self-defending true --dead-code-injection true --string-array true --string-array-encoding base64"
   },
   "dependencies": {
-    "@distube/ytdl-core": "^4.16.12",
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@imgly/background-removal": "^1.7.0",
     "@whiskeysockets/baileys": "6.7.21",
@@ -20,7 +20,6 @@
     "form-data": "^4.0.4",
     "fs-extra": "11.2.0",
     "google-tts-api": "2.0.2",
-    "https-proxy-agent": "^9.0.0",
     "jimp": "1.6.0",
     "mime-types": "2.1.35",
     "node-cache": "5.1.2",
@@ -30,9 +29,7 @@
     "ruhend-scraper": "9.0.8",
     "sharp": "0.34.5",
     "st-shazam": "^1.0.1",
-    "yt-dlp-exec": "^1.0.2",
-    "yt-search": "^2.13.1",
-    "ytdl-core": "^4.11.5"
+    "yt-search": "^2.13.1"
   },
   "devDependencies": {
     "javascript-obfuscator": "^4.2.2"
