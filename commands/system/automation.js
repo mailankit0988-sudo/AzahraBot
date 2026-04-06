@@ -1,108 +1,61 @@
-// ==============================================
-// ⚙️ Automation Core Controller (Owner Only)
-// Azahrabot
-// ==============================================
-
 const fs = require("fs");
 const path = require("path");
 const settings = require("../../settings");
 
-const DATA_FILE = path.join(__dirname, "../../data/automation.json");
+const automationPath = path.join(process.cwd(), "data", "automation.json");
 
-const DEFAULT_CONFIG = {
-  autoreact: false,
-  autostatusview: false,
-  autostatusreact: false,
-  autotyping: false,
-  autoread: false
-};
-
-function loadConfig() {
-  try {
-    if (!fs.existsSync(DATA_FILE)) {
-      fs.writeFileSync(DATA_FILE, JSON.stringify(DEFAULT_CONFIG, null, 2));
-      return DEFAULT_CONFIG;
-    }
-    return { ...DEFAULT_CONFIG, ...JSON.parse(fs.readFileSync(DATA_FILE)) };
-  } catch {
-    return DEFAULT_CONFIG;
+function getAutomation() {
+  if (!fs.existsSync(automationPath)) {
+    const defaultData = {
+      autoreact: false,
+      autotyping: false,
+      autoread: false,
+      autostatusview: false,
+      autostatusreact: false,
+    };
+    fs.mkdirSync(path.dirname(automationPath), { recursive: true });
+    fs.writeFileSync(automationPath, JSON.stringify(defaultData, null, 2));
+    return defaultData;
   }
+  return JSON.parse(fs.readFileSync(automationPath, "utf8"));
 }
 
-function saveConfig(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-  if (typeof global.refreshAutoConfig === 'function') {
-    global.refreshAutoConfig();
-  }
+function saveAutomation(data) {
+  fs.writeFileSync(automationPath, JSON.stringify(data, null, 2));
 }
 
-// OWNER CHECK (fromMe safest)
-function isOwner(msg) {
+// OWNER CHECK (Simplified)
+function isOwner(sock, msg, from) {
   if (msg.key.fromMe) return true;
 
   const sender = msg.key.participant || msg.key.remoteJid;
-  const senderNum = sender.replace(/\D/g, "");
-  const ownerNum = (settings.ownerNumber || "").replace(/\D/g, "");
+  const ownerNum = (settings.ownerNumber || "").replace(/[^0-9]/g, "");
+  const senderNum = (sender || "").split("@")[0].split(":")[0].replace(/[^0-9]/g, "");
 
-  return senderNum === ownerNum;
+  return senderNum && ownerNum && senderNum === ownerNum;
 }
 
 module.exports = async function automationController(sock, msg, from, text, args) {
-
-  if (!isOwner(msg)) {
+  if (!isOwner(sock, msg, from)) {
     return sock.sendMessage(from, {
       text: "❌ Owner only command."
     }, { quoted: msg });
   }
 
-  const prefix = typeof global.getPrefix === 'function' ? global.getPrefix() : (settings.prefix || ".");
-  const withoutPrefix = text.slice(prefix.length).trim();
-  const command = withoutPrefix.split(/\s+/)[0].toLowerCase();
-  const config = loadConfig();
-  const state = args[0]?.toLowerCase();
+  const cmd = text.toLowerCase().split(" ")[0].replace(".", "");
+  const current = getAutomation();
+  const arg = args[0]?.toLowerCase();
 
-  if (!["on", "off"].includes(state)) {
+  if (!arg || !["on", "off"].includes(arg)) {
     return sock.sendMessage(from, {
-      text:
-        "Usage:\n" +
-        ".autoreact on/off\n" +
-        ".autotyping on/off\n" +
-        ".autoread on/off\n" +
-        ".autostatusview on/off\n" +
-        ".autostatusreact on/off"
+      text: `🔄 *${cmd.toUpperCase()}* is currently *${current[cmd] ? "ON" : "OFF"}*\nUse \`. ${cmd} on\` or \`. ${cmd} off\``
     }, { quoted: msg });
   }
 
-  const value = state === "on";
-
-  switch (command) {
-    case "autoreact":
-      config.autoreact = value;
-      break;
-
-    case "autotyping":
-      config.autotyping = value;
-      break;
-
-    case "autoread":
-      config.autoread = value;
-      break;
-
-    case "autostatusview":
-      config.autostatusview = value;
-      break;
-
-    case "autostatusreact":
-      config.autostatusreact = value;
-      break;
-
-    default:
-      return;
-  }
-
-  saveConfig(config);
+  current[cmd] = arg === "on";
+  saveAutomation(current);
 
   return sock.sendMessage(from, {
-    text: `✅ ${command.toUpperCase()} is now *${state.toUpperCase()}*`
+    text: `✅ *${cmd.toUpperCase()}* has been turned *${arg.toUpperCase()}*`
   }, { quoted: msg });
 };

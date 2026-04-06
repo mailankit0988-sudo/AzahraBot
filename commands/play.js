@@ -83,11 +83,22 @@ module.exports = async (sock, msg, from, text, args) => {
       }
     }, { quoted: msg });
 
-    // 🔥 downloader API
-    const api = `https://eliteprotech-apis.zone.id/ytdown?url=${encodeURIComponent(video.url)}&format=mp3`;
-
-    const res = await axios.get(api);
-    const dl = res.data.downloadURL;
+    // 🔥 downloader API (with Fallback)
+    let dl;
+    try {
+      const primaryApi = `https://eliteprotech-apis.zone.id/ytdown?url=${encodeURIComponent(video.url)}&format=mp3`;
+      const res = await axios.get(primaryApi);
+      if (!res.data || !res.data.downloadURL) throw new Error("Primary API invalid response");
+      dl = res.data.downloadURL;
+    } catch (primaryError) {
+      console.log("[PLAY API] Primary API failed, switching to fallback:", primaryError.message);
+      const fallbackApi = `https://api.princetechn.com/api/download/dlmp3?apikey=prince&url=${encodeURIComponent(video.url)}`;
+      const fallbackRes = await axios.get(fallbackApi);
+      if (!fallbackRes.data || !fallbackRes.data.success || !fallbackRes.data.result || !fallbackRes.data.result.download_url) {
+        throw new Error("Both Primary and Fallback APIs failed.");
+      }
+      dl = fallbackRes.data.result.download_url;
+    }
 
     const tempDir = ensureTempDir();
     const rawPath = path.join(tempDir, `play_${Date.now()}.bin`);
