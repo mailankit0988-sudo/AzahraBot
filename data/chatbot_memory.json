@@ -1,0 +1,23 @@
+{
+  "78723143450718@lid": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hi"
+      },
+      {
+        "role": "assistant",
+        "content": "yoo whats good 🔥"
+      },
+      {
+        "role": "user",
+        "content": "Hi"
+      },
+      {
+        "role": "assistant",
+        "content": "yo what’s up? 😄"
+      }
+    ],
+    "lastSeen": 1776445652187
+  }
+}
