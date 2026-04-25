@@ -38,6 +38,17 @@ module.exports = async (sock, msg, from, text, args) => {
         }
 
         const { name, img } = res.data.data;
+
+        const caption = `🚩 *GUESS THE FLAG* 🚩\n\n` +
+            `What country does this flag belong to?\n\n` +
+            `💡 Use: *${settings.prefix}gf <answer>*\n` +
+            `⏳ You have 60 seconds!\n\n` +
+            `> ${small_lib.author}`;
+
+        // Send the flag image FIRST, only activate game if send succeeds
+        await sock.sendMessage(from, { image: { url: img }, caption }, { quoted: msg });
+
+        // Only set game active AFTER image was sent successfully
         game.active = true;
         game.answer = name.toLowerCase().trim();
 
@@ -46,19 +57,19 @@ module.exports = async (sock, msg, from, text, args) => {
             if (game.active) {
                 sock.sendMessage(from, { text: `⏰ Time's up!\n\n🏳️ The flag was: *${name}*` });
                 game.active = false;
+                game.answer = null;
             }
         }, 60_000);
 
-        const caption = `🚩 *GUESS THE FLAG* 🚩\n\n` +
-            `What country does this flag belong to?\n\n` +
-            `💡 Use: *${settings.prefix}gf <answer>*\n` +
-            `⏳ You have 60 seconds!\n\n` +
-            `> ${small_lib.author}`;
-
-        return sock.sendMessage(from, { image: { url: img }, caption }, { quoted: msg });
-
     } catch (e) {
         console.error("GuessFlag Error:", e.message);
+        // Reset game state on failure so user can retry immediately
+        game.active = false;
+        game.answer = null;
+        if (game.timeout) {
+            clearTimeout(game.timeout);
+            game.timeout = null;
+        }
         return sock.sendMessage(from, { text: "❌ Failed to start flag game. Try again later." }, { quoted: msg });
     }
 };
